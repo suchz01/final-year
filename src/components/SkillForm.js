@@ -7,7 +7,7 @@ const SkillForm = () => {
     const [numOutputs, setNumOutputs] = useState(5);  // Default number of outputs to 5
     const [results, setResults] = useState([]);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {   
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:5000/predict', {
