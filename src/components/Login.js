@@ -2,11 +2,23 @@ import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import React, { useEffect, useState } from "react";
 
 const Login = () => {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Retrieve user from localStorage on component mount
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
+  const [profile, setProfile] = useState(() => {
+    // Retrieve profile from localStorage on component mount
+    const savedProfile = localStorage.getItem("profile");
+    return savedProfile ? JSON.parse(savedProfile) : null;
+  });
 
   const login = useGoogleLogin({
-    onSuccess: (codeResponse) => setUser(codeResponse),
+    onSuccess: (codeResponse) => {
+      setUser(codeResponse);
+      localStorage.setItem("user", JSON.stringify(codeResponse)); // Save user to localStorage
+    },
     onError: (error) => console.log("Login Failed:", error),
   });
 
@@ -14,10 +26,12 @@ const Login = () => {
     googleLogout();
     setUser(null);
     setProfile(null);
+    localStorage.removeItem("user"); // Remove user from localStorage
+    localStorage.removeItem("profile"); // Remove profile from localStorage
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && !profile) {
       fetch(
         `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${user.access_token}`,
         {
@@ -35,10 +49,11 @@ const Login = () => {
         })
         .then((data) => {
           setProfile(data);
+          localStorage.setItem("profile", JSON.stringify(data)); // Save profile to localStorage
         })
         .catch((error) => console.log("Error fetching profile:", error));
     }
-  }, [user]);
+  }, [user, profile]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-slate-900">
