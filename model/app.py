@@ -24,15 +24,15 @@ def suppress_label_warnings():
 
 suppress_label_warnings()
 
-data = pd.read_csv("datasettttt.csv")
+data = pd.read_csv("public/skills.csv")
 
-X = data['Skills Required']
+X = data['Skills_Required']
 y = data['Job Title'].str.split(', ')
 
 job_title_to_skills = {}
 for index, row in data.iterrows():
     job_title = row['Job Title']
-    skills = set(skill.strip().lower() for skill in row['Skills Required'].split(','))
+    skills = set(skill.strip().lower() for skill in row['Skills_Required'].split(','))
     if job_title not in job_title_to_skills:
         job_title_to_skills[job_title] = skills
     else:
