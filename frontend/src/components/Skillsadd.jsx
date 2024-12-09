@@ -14,7 +14,8 @@ function SkillsAdd() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    Papa.parse(`${process.env.PUBLIC_URL}/skills.csv`, {
+    // Access the skills.csv file directly from the public folder
+    Papa.parse('/skills.csv', {
       download: true,
       header: true,
       complete: (results) => {

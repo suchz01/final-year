@@ -7,25 +7,29 @@ function Prediction() {
   const { selectedSkills } = location.state || {}; 
   const [results, setResults] = useState([]);  // Store predicted results
   const [error, setError] = useState(null);  // For error handling
+  const [loading, setLoading] = useState(false);  // For loading state
 
   // Function to fetch predictions automatically
   const fetchPrediction = async () => {
     try {
+      setLoading(true);  // Set loading to true before fetching
       const response = await axios.post('http://localhost:5000/predict', {
         skills: selectedSkills,  // Send selected skills array
         n: 3  // Fetch 3 predictions (main + 2 additional)
       });
 
       setResults(response.data);  // Update results with the response data
+      setLoading(false);  // Set loading to false after fetching is done
     } catch (error) {
       console.error("Error occurred during the request:", error);
       setError('Something went wrong while fetching the prediction.');
+      setLoading(false);  // Set loading to false in case of an error
     }
   };
 
   // Automatically predict on component mount
   useEffect(() => {
-    if (selectedSkills.length > 0) {
+    if (selectedSkills && selectedSkills.length > 0) {
       fetchPrediction();  // Fetch predictions
     }
   }, [selectedSkills]);
@@ -37,6 +41,14 @@ function Prediction() {
       </h1>
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
+
+      {/* Loading state */}
+      {loading && <p className="text-white mt-4">Loading prediction...</p>}
+
+      {/* No skills selected */}
+      {selectedSkills && selectedSkills.length === 0 && (
+        <p className="text-white mt-4">Please select some skills to get predictions.</p>
+      )}
 
       <div className="mt-8 w-full max-w-md">
         {results.length > 0 ? (
@@ -59,7 +71,7 @@ function Prediction() {
             ))}
           </>
         ) : (
-          <p className="text-white">Fetching job titles, please wait...</p>
+          !loading && <p className="text-white">No predictions available. Please try again later.</p>
         )}
       </div>
     </div>
