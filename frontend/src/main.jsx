@@ -5,7 +5,7 @@ import "./index.css";
 import App from "./App.jsx";
 import reportWebVitals from "./reportWebVitals.js";
 import { GoogleOAuthProvider } from '@react-oauth/google';
-const clientId = '998898996296-1jpv92rlq2032dfh39dmpg0jaj8f0o6h.apps.googleusercontent.com' 
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

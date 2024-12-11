@@ -4,9 +4,32 @@ import Papa from 'papaparse';
 import { useNavigate } from 'react-router-dom';
 import debounce from 'lodash.debounce';
 
-function SkillsAdd() {
+function SkillsAdd({ profile }) {
+  if (!profile) profile = JSON.parse(localStorage.getItem("profile"));
+  const profileId = profile?.id || "";
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStrings, setSelectedStrings] = useState([]);
+  
+  useEffect(() => {
+    // Fetch skills and update state
+    const fetchSkills = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/profile/${profileId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedStrings(data.skills || []); // Set skills from fetched data
+        } else {
+          console.error("Failed to fetch profile data");
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      }
+    };
+
+    fetchSkills();
+  }, [profileId]);
+
   const [availableStrings, setAvailableStrings] = useState([]);
   const [filteredStrings, setFilteredStrings] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
@@ -14,7 +37,7 @@ function SkillsAdd() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Access the skills.csv file directly from the public folder
+    // Load skills.csv
     Papa.parse('/skills.csv', {
       download: true,
       header: true,
@@ -37,82 +60,105 @@ function SkillsAdd() {
 
   const debouncedSearch = useCallback(
     debounce((term) => {
-      if (term === '') {
-        setFilteredStrings(availableStrings); // Show all options when term is empty
+      if (!term) {
+        setFilteredStrings(availableStrings);
         return;
       }
 
       const lowerTerm = term.toLowerCase();
-
       const matchScore = (str) => {
         const lowerStr = str.toLowerCase();
-        if (lowerStr.startsWith(lowerTerm)) return 3;
-        if (lowerStr.includes(lowerTerm)) return 2;
-        return 1;
+        return lowerStr.startsWith(lowerTerm) ? 3 : lowerStr.includes(lowerTerm) ? 2 : 1;
       };
 
       const matches = availableStrings
-        .map(string => ({
-          string,
-          score: matchScore(string),
-        }))
+        .map(string => ({ string, score: matchScore(string) }))
         .filter(({ score }) => score > 1)
         .sort((a, b) => b.score - a.score || a.string.localeCompare(b.string))
         .map(({ string }) => string);
 
       setFilteredStrings(matches);
     }, 300),
+    [availableStrings]
   );
 
   const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchTerm(value);
-    debouncedSearch(value);
+    setSearchTerm(e.target.value);
+    debouncedSearch(e.target.value);
+  };
+
+  const updateDatabase = async (updatedSkills) => {
+    if (!profileId) {
+      console.error('Profile ID is missing');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/profile/skills`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId: profileId, skills: updatedSkills }),
+      });
+
+      if (!response.ok) throw new Error(`Failed to update skills: ${response.statusText}`);
+      const data = await response.json();
+      console.log('Skills updated successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Error updating skills:', error);
+      return null;
+    }
   };
 
   const handleSelect = (string) => {
     if (!selectedStrings.includes(string)) {
-      setSelectedStrings([...selectedStrings, string]);
+      const updatedSkills = [...selectedStrings, string];
+      setSelectedStrings(updatedSkills);
+      updateDatabase(updatedSkills); // Update database after selecting a skill
     }
     setSearchTerm('');
-    setFilteredStrings(availableStrings); // Reset to show all options
-    setIsFocused(false); // Hide the dropdown after selection
+    setFilteredStrings(availableStrings);
+    setIsFocused(false);
   };
 
-  const handleDeselect = (string) => {
-    setSelectedStrings(selectedStrings.filter((s) => s !== string));
+  const handleDeselect = async (string) => {
+    const updatedSkills = selectedStrings.filter((s) => s !== string);
+    setSelectedStrings(updatedSkills);
+    const data = await updateDatabase(updatedSkills); // Update database after deselecting a skill
+    if (!data) {
+      console.error("Error updating skills in the database.");
+    }
   };
 
-  const handleContinue = () => {
-    navigate('/Prediction', { state: { selectedSkills: selectedStrings } });
+  const handleContinue = async () => {
+    const data = await updateDatabase(selectedStrings); // Update database with selected skills
+    if (data) {
+      navigate('/Prediction', { state: { selectedSkills: selectedStrings } });
+    }
   };
 
   return (
     <div className='flex flex-col items-center justify-center min-h-screen bg-slate-900 px-4'>
       <div className='flex flex-col items-center justify-center w-full max-w-4xl bg-slate-900 rounded-lg p-6'>
         <h1 className='font-semibold text-xl text-lime-500 sm:text-2xl md:text-4xl lg:text-7xl mb-6 text-center'>Enter Your Skills</h1>
-        
-        {/* Centering search input */}
         <div className='w-full flex justify-center'>
-          <input 
+          <input
             type="text"
             placeholder='Add Your Skills...'
             value={searchTerm}
             onChange={handleSearch}
-            onFocus={() => setIsFocused(true)} // Set focus state to true
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)} // Delay closing dropdown after blur
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             className='w-full max-w-xs md:max-w-lg p-2 rounded-md bg-gray-50 text-green-800 border-2 border-indigo-300 focus:outline-none focus:border-indigo-500'
           />
         </div>
-        
-        {/* Filtered results dropdown */}
         {(searchTerm || isFocused) && (
           <div className='w-full flex justify-center'>
             <ul className='bg-lime-50 border mt-2 shadow-md rounded-md max-h-48 overflow-y-auto w-full max-w-xs md:max-w-lg'>
               {filteredStrings.map((string, index) => (
-                <li 
-                  key={index} 
-                  onMouseDown={() => handleSelect(string)} // Use onMouseDown to select before blur
+                <li
+                  key={index}
+                  onMouseDown={() => handleSelect(string)}
                   className='p-2 cursor-pointer hover:bg-gray-100 border-b last:border-none'
                 >
                   {string}
@@ -121,21 +167,14 @@ function SkillsAdd() {
             </ul>
           </div>
         )}
-
-        {/* Selected skills */}
         <div className='mt-4 flex flex-wrap justify-center w-full max-w-xs md:max-w-lg'>
           {selectedStrings.map((string, index) => (
             <div key={index} className='flex items-center m-1 p-2 bg-lime-100 rounded'>
               <span>{string}</span>
-              <FaTimes
-                className='ml-2 text-red-500 cursor-pointer' 
-                onClick={() => handleDeselect(string)}
-              />                
+              <FaTimes className='ml-2 text-red-500 cursor-pointer' onClick={() => handleDeselect(string)} />
             </div>
           ))}
         </div>
-
-        {/* Continue button */}
         <div
           onClick={handleContinue}
           className="relative inline-flex items-center justify-center mt-10 py-3 pl-4 pr-12 overflow-hidden font-semibold text-indigo-500 transition-all duration-150 ease-in-out rounded-lg hover:pl-10 hover:pr-6 bg-white group cursor-pointer"
