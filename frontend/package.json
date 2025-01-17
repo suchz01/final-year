@@ -10,9 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coreui/icons": "^3.0.1",
+    "@coreui/icons-react": "^2.3.0",
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.7.9",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "lodash.debounce": "^4.0.8",
+    "lucide-react": "^0.468.0",
+    "motion": "^11.15.0",
     "papaparse": "^5.4.1",
     "process": "^0.11.10",
     "react": "^18.3.1",

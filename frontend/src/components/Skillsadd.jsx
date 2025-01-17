@@ -97,7 +97,7 @@ function SkillsAdd({ profile }) {
       const response = await fetch(`http://localhost:8080/profile/skills`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId: profileId, skills: updatedSkills }),
+        body: JSON.stringify({ profileId: profileId, value: updatedSkills }),
       });
 
       if (!response.ok) throw new Error(`Failed to update skills: ${response.statusText}`);

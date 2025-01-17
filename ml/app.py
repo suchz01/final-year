@@ -9,6 +9,7 @@ from sklearn.naive_bayes import MultinomialNB
 import numpy as np
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
+import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -114,32 +115,54 @@ def predict_top_badges(user_input, include_skills=None, n=5):
             if badge not in unique_predicted_badges:
                 unique_predicted_badges.append(badge)
 
-    # Prioritize badges received (no missing skills) at the top
+    # Prioritize badges with matched skills at the top
     unique_predicted_badges = sorted(
         unique_predicted_badges, 
-        key=lambda badge: len(skills_info[badge]['missing_skills'])
+        key=lambda badge: (-len(skills_info[badge]['matched_skills']), len(skills_info[badge]['missing_skills']))
     )
 
     return unique_predicted_badges, skills_info
+
+def add_badge_to_profile(profile_id, badge):
+    url = f"http://localhost:8080/profile/badges"
+    payload = {
+        "profileId": profile_id,
+        "value": badge
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code == 200:
+        print(f"Badge '{badge}' added to profile '{profile_id}' successfully.")
+    else:
+        print(f"Failed to add badge '{badge}' to profile '{profile_id}'.")
 
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
     skills = data.get('skills', [])
     additional_skills = data.get('additionalSkills', [])
+    profile_id = data.get('profileId', '')
     n = data.get('n', 5)
     predicted_badges, skills_info = predict_top_badges(skills, additional_skills if additional_skills else None, n)
 
     results = []
+    matched_badges = []
+    matched_skill={}
     for badge in predicted_badges:
-        result = {
-            "jobTitle": badge,
-            "matchedSkills": list(skills_info[badge]['matched_skills']),
-            "missingSkills": list(skills_info[badge]['missing_skills'])
-        }
-        results.append(result)
+        if len(skills_info[badge]['missing_skills']) == 0:
+            matched_badges.append(badge)
+            matched_skill[badge] = list(skills_info[badge]['matched_skills'])
+        else:
+            result = {
+                "jobTitle": badge,
+                "matchedSkills": list(skills_info[badge]['matched_skills']),
+                "missingSkills": list(skills_info[badge]['missing_skills'])
+            }
+            results.append(result)
 
-    return jsonify(results)
+    return jsonify({"results": results, "matchedBadges": matched_badges,"matched_skill":matched_skill})
 
 if __name__ == '__main__':
     app.run(debug=True)
